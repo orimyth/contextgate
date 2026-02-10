@@ -358,14 +358,6 @@ contextgate help                    Show help
 | `-prune-keep-top` | `0` | Keep only top K most-used tools |
 | `-prune-keep` | | Tools that should never be pruned (comma-separated) |
 
-## Roadmap
-
-- [x] **Phase 1: Flight Recorder** — proxy, SQLite logging, live HTMX dashboard, JSON API
-- [x] **Phase 2: Iron Dome** — YAML policy engine, PII scrubbing, human-in-the-loop approval
-- [x] **Phase 3: Context Compressor** — tool analytics, usage tracking, dynamic tool pruning
-- [x] **Phase 4: Distribution** — GoReleaser, GitHub Actions CI, Homebrew tap
-- [ ] Docker image, demo GIFs
-
 ## Development
 
 ```bash
