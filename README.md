@@ -75,19 +75,19 @@ That's it. The dashboard opens at **http://localhost:9000** and you can watch ev
 
 **macOS (Homebrew):**
 ```bash
-brew install contextgate/tap/contextgate
+brew install orimyth/contextgate/contextgate
 ```
 
 **Go install:**
 ```bash
-go install github.com/contextgate/contextgate@latest
+go install github.com/orimyth/contextgate@latest
 ```
 
-**Download a binary:** grab the latest release from [GitHub Releases](https://github.com/contextgate/contextgate/releases) for your OS and architecture.
+**Download a binary:** grab the latest release from [GitHub Releases](https://github.com/orimyth/contextgate/releases) for your OS and architecture (macOS, Linux, Windows).
 
 **Build from source:**
 ```bash
-git clone https://github.com/contextgate/contextgate.git
+git clone https://github.com/orimyth/contextgate.git
 cd contextgate
 make build
 ```

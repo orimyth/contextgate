@@ -42,9 +42,9 @@ changelog:
 
 brews:
   - repository:
-      owner: contextgate
-      name: homebrew-tap
-    homepage: https://github.com/contextgate/contextgate
+      owner: orimyth
+      name: homebrew-contextgate
+    homepage: https://github.com/orimyth/contextgate
     description: Security & observability layer for AI agents
     license: MIT
     install: |
