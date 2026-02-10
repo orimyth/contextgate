@@ -46,6 +46,7 @@ brews:
   - repository:
       owner: orimyth
       name: homebrew-contextgate
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     homepage: https://github.com/orimyth/contextgate
     description: Security & observability layer for AI agents
     license: MIT
