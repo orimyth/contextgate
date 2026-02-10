@@ -44,10 +44,48 @@ Tracks which tools MCP servers expose and which ones the agent actually uses. Op
 - **Always-keep list** — protect critical tools from being pruned
 - **Top-K mode** — keep only the K most-used tools
 
+## How It Works
+
+ContextGate wraps any MCP server command. The basic pattern is:
+
+```
+contextgate [options] -- <server command>
+                      ^^
+            separator between contextgate
+            options and your server command
+```
+
+For example, if you normally run your MCP server like this:
+
+```bash
+npx -y @modelcontextprotocol/server-filesystem ~/Documents
+```
+
+Just put `contextgate --` in front:
+
+```bash
+contextgate -- npx -y @modelcontextprotocol/server-filesystem ~/Documents
+```
+
+That's it. The dashboard opens at **http://localhost:9000** and you can watch every message in real time.
+
 ## Quick Start
 
 ### Install
 
+**macOS (Homebrew):**
+```bash
+brew install contextgate/tap/contextgate
+```
+
+**Go install:**
+```bash
+go install github.com/contextgate/contextgate@latest
+```
+
+**Download a binary:** grab the latest release from [GitHub Releases](https://github.com/contextgate/contextgate/releases) for your OS and architecture.
+
+**Build from source:**
 ```bash
 git clone https://github.com/contextgate/contextgate.git
 cd contextgate
@@ -60,40 +98,45 @@ make build
 ./contextgate setup
 ```
 
-This auto-detects your MCP clients (Claude Desktop, Claude Code, Cursor), shows your existing servers, and wraps them with one prompt.
+This auto-detects your MCP clients (Claude Desktop, Claude Code, Cursor), shows your existing servers, and offers to wrap them automatically.
 
-### Option B: Claude Code One-Liner
+### Option B: Claude Code
 
-```bash
-./contextgate wrap my-fs -- npx -y @modelcontextprotocol/server-filesystem /tmp
-```
-
-This registers a ContextGate-wrapped MCP server directly into Claude Code.
-
-### Option C: Manual
-
-Wrap any MCP server command:
+Register an MCP server wrapped with ContextGate in one command:
 
 ```bash
-contextgate -- npx -y @modelcontextprotocol/server-filesystem /tmp
+./contextgate wrap my-fs -- npx -y @modelcontextprotocol/server-filesystem ~/Documents
 ```
 
-The dashboard opens automatically at **http://localhost:9000**.
+This calls `claude mcp add` under the hood — no manual config needed.
+
+### Option C: Direct
+
+Run ContextGate directly (useful for testing or non-Claude clients):
+
+```bash
+./contextgate -- npx -y @modelcontextprotocol/server-filesystem ~/Documents
+```
 
 ## Client Configuration
 
 <details>
 <summary><strong>Claude Desktop</strong></summary>
 
-Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
+Edit `~/Library/Application Support/Claude/claude_desktop_config.json`.
+
+Replace `command` with the path to ContextGate, and move your original server command into `args` after the `--` separator:
 
 ```json
 {
   "mcpServers": {
-    "filesystem": {
+    "my-server": {
       "command": "/path/to/contextgate",
-      "args": ["--dashboard", ":9000", "--", "npx", "-y",
-               "@modelcontextprotocol/server-filesystem", "/Users/you/Documents"]
+      "args": [
+        "--",
+        "npx", "-y", "@modelcontextprotocol/server-filesystem",
+        "/Users/you/Documents"
+      ]
     }
   }
 }
@@ -108,10 +151,13 @@ Edit `.cursor/mcp.json` or `~/.cursor/mcp.json`:
 ```json
 {
   "mcpServers": {
-    "filesystem": {
+    "my-server": {
       "command": "/path/to/contextgate",
-      "args": ["--dashboard", ":9000", "--", "npx", "-y",
-               "@modelcontextprotocol/server-filesystem", "/Users/you/projects"]
+      "args": [
+        "--",
+        "npx", "-y", "@modelcontextprotocol/server-filesystem",
+        "/Users/you/projects"
+      ]
     }
   }
 }
@@ -119,20 +165,28 @@ Edit `.cursor/mcp.json` or `~/.cursor/mcp.json`:
 </details>
 
 <details>
-<summary><strong>Claude Code</strong></summary>
+<summary><strong>Claude Code (manual)</strong></summary>
+
+If you prefer to register manually instead of using `contextgate wrap`:
 
 ```bash
-claude mcp add --transport stdio --scope user my-server \
-  -- /path/to/contextgate --dashboard :9000 \
-  -- npx -y @modelcontextprotocol/server-filesystem /tmp
+claude mcp add my-server \
+  -t stdio \
+  -s user \
+  -- /path/to/contextgate -- npx -y @modelcontextprotocol/server-filesystem ~/Documents
 ```
 
-Or use the shorthand: `contextgate wrap my-server -- npx -y @modelcontextprotocol/server-filesystem /tmp`
+Breakdown:
+- `my-server` — name you'll see in Claude Code
+- `-t stdio` — transport type (always stdio for ContextGate)
+- `-s user` — scope (user-wide, or use `project` for per-project)
+- first `--` — separates `claude mcp add` options from the command
+- second `--` — separates ContextGate options from the server command
 </details>
 
 ## Security Policy
 
-Create a YAML policy file to control what your AI agent can and cannot do:
+Create a YAML file to control what your AI agent can and cannot do:
 
 ```yaml
 version: "1"
@@ -163,7 +217,7 @@ rules:
     action: audit
     methods: ["tools/call"]
 
-# PII scrubbing configuration
+# Auto-redact secrets from server responses
 scrubber:
   enabled: true
   custom_patterns:
@@ -172,11 +226,13 @@ scrubber:
       label: internal_token
 ```
 
-Run with a policy:
+Enable it with the `--policy` flag:
 
 ```bash
-contextgate --policy policy.yaml -- npx -y @modelcontextprotocol/server-filesystem /tmp
+contextgate --policy policy.yaml -- <server command>
 ```
+
+A full example is included at `configs/example-policy.yaml`.
 
 ### Policy Rule Reference
 
@@ -188,43 +244,43 @@ contextgate --policy policy.yaml -- npx -y @modelcontextprotocol/server-filesyst
 | `tools` | Tool names to match (from the `params.name` field) |
 | `patterns` | Regex patterns matched against the full message payload |
 
-**Priority**: When multiple rules match, `deny` takes priority over `require_approval`, which takes priority over `audit`.
+**Priority**: When multiple rules match, `deny` > `require_approval` > `audit`.
 
-### Built-in PII Patterns
+### PII Scrubbing
 
-When PII scrubbing is enabled (via `--scrub-pii` or `scrubber.enabled: true` in the policy file), the following patterns are automatically redacted from **server-to-host** responses:
+Enable with `--scrub-pii` or `scrubber.enabled: true` in your policy file. The following patterns are automatically redacted from server responses:
 
-| Pattern | Label | Example |
-|---------|-------|---------|
-| OpenAI API keys | `api_key` | `sk-abc123...` |
-| GitHub PATs | `api_key` | `ghp_abc123...` |
-| AWS access keys | `api_key` | `AKIA...` |
-| Email addresses | `email` | `user@example.com` |
-| SSNs | `ssn` | `123-45-6789` |
-| IPv4 addresses | `ip_address` | `192.168.1.1` |
+| Pattern | Redacted as |
+|---------|-------------|
+| OpenAI keys (`sk-...`) | `[REDACTED:api_key]` |
+| GitHub tokens (`ghp_...`, `gho_...`) | `[REDACTED:api_key]` |
+| AWS keys (`AKIA...`) | `[REDACTED:api_key]` |
+| Email addresses | `[REDACTED:email]` |
+| SSNs (`123-45-6789`) | `[REDACTED:ssn]` |
+| IPv4 addresses | `[REDACTED:ip_address]` |
 
-Redacted values are replaced with `[REDACTED:label]`.
+Add custom patterns in your policy YAML under `scrubber.custom_patterns`.
 
 ## Tool Pruning
 
-MCP servers often expose 20-50+ tools, but agents typically use only a few per session. Each unused tool wastes context tokens on its name, description, and JSON schema. ContextGate can prune unused tools from `tools/list` responses:
+MCP servers often expose 20-50+ tools, but agents typically use only a few. Each unused tool wastes context tokens. ContextGate can automatically remove unused tools from `tools/list` responses.
 
 ```bash
-# Remove tools with zero calls in the last 3 sessions
-contextgate --prune-unused 3 -- npx -y @modelcontextprotocol/server-filesystem /tmp
+# Prune tools that had zero calls in the last 3 sessions
+contextgate --prune-unused 3 -- <server command>
 
-# Keep only the top 10 most-used tools
-contextgate --prune-keep-top 10 -- npx -y @modelcontextprotocol/server-filesystem /tmp
+# Only keep the 10 most-used tools
+contextgate --prune-keep-top 10 -- <server command>
 
-# Protect specific tools from pruning
-contextgate --prune-unused 3 --prune-keep "read_file,write_file" -- npx -y @modelcontextprotocol/server-filesystem /tmp
+# Combine: prune unused, but always keep specific tools
+contextgate --prune-unused 3 --prune-keep read_file,write_file -- <server command>
 ```
 
-Pruning decisions are based on historical usage data stored in SQLite. The first session sees all tools; pruning activates from the second session onward.
+Pruning uses historical usage data from SQLite. All tools are visible in the first session; pruning kicks in from the second session onward.
 
 ## Dashboard
 
-Real-time web UI at `localhost:9000` with Server-Sent Events — no polling, no WebSockets.
+Real-time web UI at `localhost:9000` — no polling, no WebSockets, just SSE.
 
 - **Live feed** — messages appear instantly as they flow through the proxy
 - **Detail panel** — click any row for the full pretty-printed JSON-RPC payload
@@ -232,7 +288,15 @@ Real-time web UI at `localhost:9000` with Server-Sent Events — no polling, no 
 - **Tool analytics** — per-tool call counts, session coverage, pruning status
 - **Approval notifications** — approve or deny gated operations directly in the dashboard
 - **Filters** — by direction and message type
-- **JSON API** — `GET /api/messages`, `GET /api/stats`, `GET /api/tools/analytics`, `GET /events` (SSE stream)
+
+### API Endpoints
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/messages` | Query logged messages |
+| `GET /api/stats` | Aggregate statistics |
+| `GET /api/tools/analytics` | Tool usage analytics |
+| `GET /events` | SSE stream (real-time) |
 
 ## Architecture
 
@@ -242,11 +306,11 @@ Host (Claude / Cursor)
     ▼
  ContextGate
     ├─ Interceptor Chain
-    │   ├─ PolicyInterceptor      → deny / require_approval / audit
-    │   ├─ ScrubberInterceptor    → redact PII in responses
-    │   ├─ ApprovalInterceptor    → gate operations behind human review
+    │   ├─ PolicyInterceptor        → deny / require_approval / audit
+    │   ├─ ScrubberInterceptor      → redact PII in responses
+    │   ├─ ApprovalInterceptor      → gate operations behind human review
     │   ├─ ToolAnalyticsInterceptor → track + prune tools
-    │   └─ LoggingInterceptor     → persist to SQLite + publish to EventBus
+    │   └─ LoggingInterceptor       → persist to SQLite + publish to EventBus
     ├─ SQLite (async buffered writes)
     ├─ EventBus (fan-out pub/sub)
     └─ Dashboard (HTMX + SSE, :9000)
@@ -260,14 +324,16 @@ Raw JSON-RPC interception — no SDK wrapping, no re-registration of tools. Mess
 ## CLI Reference
 
 ```
-contextgate [options] -- <command> [args...]   Proxy an MCP server
-contextgate setup                              Interactive setup wizard
-contextgate wrap <name> -- <cmd> [args...]     Register in Claude Code
-contextgate version                            Print version
-contextgate help                               Show help
+contextgate [flags] -- <command>    Wrap an MCP server
+contextgate setup                   Interactive setup wizard
+contextgate wrap <name> -- <cmd>    Register wrapped server in Claude Code
+contextgate version                 Print version
+contextgate help                    Show help
 ```
 
-### Proxy Options
+### Flags
+
+**General:**
 
 | Flag | Default | Description |
 |------|---------|-------------|
@@ -276,28 +342,29 @@ contextgate help                               Show help
 | `-log-level` | `info` | `debug`, `info`, `warn`, `error` |
 | `-no-browser` | `false` | Don't auto-open dashboard |
 
-### Security Options
+**Security:**
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `-policy` | | Path to security policy YAML file |
-| `-scrub-pii` | `false` | Enable PII scrubbing in server responses |
-| `-approval-timeout` | `60s` | Timeout for human approval requests |
+| `-policy` | | Path to policy YAML file |
+| `-scrub-pii` | `false` | Redact PII from server responses |
+| `-approval-timeout` | `60s` | Timeout for approval requests |
 
-### Context Optimization
+**Pruning:**
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `-prune-unused` | `0` | Prune tools unused in last N sessions (0 = disabled) |
-| `-prune-keep-top` | `0` | Keep only top K most-used tools (0 = disabled) |
-| `-prune-keep` | | Comma-separated tools that should never be pruned |
+| `-prune-unused` | `0` | Remove tools unused in last N sessions |
+| `-prune-keep-top` | `0` | Keep only top K most-used tools |
+| `-prune-keep` | | Tools that should never be pruned (comma-separated) |
 
 ## Roadmap
 
 - [x] **Phase 1: Flight Recorder** — proxy, SQLite logging, live HTMX dashboard, JSON API
 - [x] **Phase 2: Iron Dome** — YAML policy engine, PII scrubbing, human-in-the-loop approval
 - [x] **Phase 3: Context Compressor** — tool analytics, usage tracking, dynamic tool pruning
-- [ ] **Phase 4: Launch** — `brew install`, GoReleaser, demo GIFs, Docker
+- [x] **Phase 4: Distribution** — GoReleaser, GitHub Actions CI, Homebrew tap
+- [ ] Docker image, demo GIFs
 
 ## Development
 
