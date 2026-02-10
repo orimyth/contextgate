@@ -1,0 +1,29 @@
+{{define "message_row.html"}}
+<tr class="new-row" onclick="showDetail({{.ID}})">
+    <td class="col-time">{{formatTime .Timestamp}}</td>
+    <td class="col-dir">
+        {{if eq .Direction "host_to_server"}}
+        <span class="dir-arrow dir-host-to-server" title="Host &rarr; Server">&rarr;</span>
+        {{else}}
+        <span class="dir-arrow dir-server-to-host" title="Server &rarr; Host">&larr;</span>
+        {{end}}
+    </td>
+    <td class="col-kind">
+        <span class="kind-badge {{kindClass .Kind}}">{{.Kind}}</span>
+    </td>
+    <td class="col-method">
+        {{if .Method}}<span class="method-name">{{.Method}}</span>{{else}}<span class="payload-preview">-</span>{{end}}
+    </td>
+    <td class="col-preview">
+        <span class="payload-preview">{{truncate .Payload 80}}</span>
+    </td>
+    <td class="col-size">
+        <span class="size-bytes">{{.SizeBytes}}B</span>
+    </td>
+    <td class="col-status">
+        {{if .Blocked}}<span class="blocked-badge">Blocked</span>{{end}}
+        {{if .Audit}}<span class="audit-badge">Audit</span>{{end}}
+        {{if gt .ScrubCount 0}}<span class="scrubbed-badge">Scrubbed</span>{{end}}
+    </td>
+</tr>
+{{end}}

@@ -1,0 +1,61 @@
+{{define "message_detail.html"}}
+<div class="detail-header">
+    <h2>Message #{{.ID}}</h2>
+    <button class="detail-close" onclick="closeDetail()">ESC</button>
+</div>
+<dl class="detail-meta">
+    <dt>Timestamp</dt>
+    <dd>{{formatTimeFull .Timestamp}}</dd>
+
+    <dt>Direction</dt>
+    <dd>{{dirLabel .Direction}}</dd>
+
+    <dt>Type</dt>
+    <dd><span class="kind-badge {{kindClass .Kind}}">{{.Kind}}</span></dd>
+
+    <dt>Method</dt>
+    <dd>{{if .Method}}<span class="method-name">{{.Method}}</span>{{else}}-{{end}}</dd>
+
+    <dt>Message ID</dt>
+    <dd>{{if .MsgID}}{{.MsgID}}{{else}}-{{end}}</dd>
+
+    <dt>Session</dt>
+    <dd>{{.SessionID}}</dd>
+
+    <dt>Size</dt>
+    <dd>{{.SizeBytes}} bytes</dd>
+
+    {{if .Blocked}}
+    <dt>Status</dt>
+    <dd><span class="blocked-badge">Blocked</span></dd>
+    {{end}}
+
+    {{if .ToolName}}
+    <dt>Tool</dt>
+    <dd><span class="method-name">{{.ToolName}}</span></dd>
+    {{end}}
+
+    {{if .PolicyAction}}
+    <dt>Policy</dt>
+    <dd><span class="kind-badge kind-{{.PolicyAction}}">{{.PolicyAction}}</span></dd>
+    {{end}}
+
+    {{if .MatchedRules}}
+    <dt>Rules</dt>
+    <dd>{{joinStrings .MatchedRules ", "}}</dd>
+    {{end}}
+
+    {{if gt .ScrubCount 0}}
+    <dt>Scrubbed</dt>
+    <dd><span class="scrubbed-badge">{{.ScrubCount}} items</span></dd>
+    {{end}}
+
+    {{if .Audit}}
+    <dt>Audit</dt>
+    <dd><span class="audit-badge">Yes</span></dd>
+    {{end}}
+</dl>
+<div class="detail-payload">
+    <pre>{{prettyJSON .Payload}}</pre>
+</div>
+{{end}}

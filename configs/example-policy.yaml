@@ -1,0 +1,38 @@
+# ContextGate Security Policy (Phase 2)
+# This file will be loaded via: contextgate --policy configs/example-policy.yaml
+
+version: "1"
+
+rules:
+  # Block writing to .env files
+  - name: protect-env-files
+    action: deny
+    methods: ["tools/call"]
+    tools: ["write_file", "filesystem_write"]
+    patterns:
+      - '\.env'
+
+  # Block arbitrary command execution
+  - name: block-shell-execution
+    action: deny
+    methods: ["tools/call"]
+    tools: ["execute_command", "run_shell", "run_terminal_command"]
+
+  # Require human approval for destructive operations
+  - name: approve-deletions
+    action: require_approval
+    methods: ["tools/call"]
+    tools: ["delete_file", "remove_directory"]
+
+  # Audit all tool calls (log with extra detail)
+  - name: audit-all-tools
+    action: audit
+    methods: ["tools/call"]
+
+# PII scrubbing configuration
+scrubber:
+  enabled: true
+  custom_patterns:
+    - name: internal_token
+      pattern: 'ctx_[A-Za-z0-9]{32,}'
+      label: internal_token

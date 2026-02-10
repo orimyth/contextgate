@@ -1,0 +1,34 @@
+{{define "stats.html"}}
+<div class="stat-card">
+    <span class="stat-label">Total</span>
+    <span class="stat-value total">{{.TotalMessages}}</span>
+</div>
+<div class="stat-card">
+    <span class="stat-label">Requests</span>
+    <span class="stat-value requests">{{.RequestCount}}</span>
+</div>
+<div class="stat-card">
+    <span class="stat-label">Responses</span>
+    <span class="stat-value responses">{{.ResponseCount}}</span>
+</div>
+<div class="stat-card">
+    <span class="stat-label">Notifications</span>
+    <span class="stat-value notifications">{{.NotificationCount}}</span>
+</div>
+<div class="stat-card">
+    <span class="stat-label">Errors</span>
+    <span class="stat-value errors">{{.ErrorCount}}</span>
+</div>
+<div class="stat-card">
+    <span class="stat-label">Blocked</span>
+    <span class="stat-value blocked">{{.BlockedCount}}</span>
+</div>
+<div class="stat-card">
+    <span class="stat-label">Scrubbed</span>
+    <span class="stat-value scrubbed">{{.ScrubCount}}</span>
+</div>
+<div class="stat-card">
+    <span class="stat-label">Pending</span>
+    <span class="stat-value pending">{{.ApprovalPending}}</span>
+</div>
+{{end}}

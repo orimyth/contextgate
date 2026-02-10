@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ContextGate Inspector</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="/static/htmx.min.js"></script>
+    <script src="/static/sse.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-title">
+                <h1>CONTEXTGATE</h1>
+                <span class="version">v0.1.0</span>
+            </div>
+            <div class="status-indicator">
+                <span class="status-dot"></span>
+                <span>Live</span>
+            </div>
+        </div>
+
+        <!-- Stats Bar -->
+        <div class="stats-bar"
+             hx-get="/partials/stats"
+             hx-trigger="every 2s"
+             hx-swap="innerHTML">
+            {{template "stats.html" .Stats}}
+        </div>
+
+        <!-- Tool Analytics -->
+        <details class="tool-analytics-container" open>
+            <summary>Tool Analytics</summary>
+            <div hx-get="/partials/tool-analytics" hx-trigger="load, every 5s" hx-swap="innerHTML"></div>
+        </details>
+
+        <!-- Filters -->
+        <div class="filters">
+            <select class="filter-select" id="filter-direction"
+                    hx-get="/"
+                    hx-target="#message-table-body"
+                    hx-select="#message-table-body"
+                    hx-swap="outerHTML"
+                    hx-include="[id^='filter-']"
+                    name="direction">
+                <option value="">All Directions</option>
+                <option value="host_to_server">Host &rarr; Server</option>
+                <option value="server_to_host">Server &rarr; Host</option>
+            </select>
+            <select class="filter-select" id="filter-kind"
+                    hx-get="/"
+                    hx-target="#message-table-body"
+                    hx-select="#message-table-body"
+                    hx-swap="outerHTML"
+                    hx-include="[id^='filter-']"
+                    name="kind">
+                <option value="">All Types</option>
+                <option value="request">Requests</option>
+                <option value="response">Responses</option>
+                <option value="notification">Notifications</option>
+                <option value="error">Errors</option>
+            </select>
+        </div>
+
+        <!-- Approval Notifications -->
+        <div id="approval-container" class="approval-container"
+             hx-ext="sse" sse-connect="/events"
+             sse-swap="approval" hx-swap="afterbegin">
+        </div>
+
+        <!-- Message Table -->
+        <div class="table-container" hx-ext="sse" sse-connect="/events">
+            <table class="message-table">
+                <thead>
+                    <tr>
+                        <th class="col-time">Time</th>
+                        <th class="col-dir">Dir</th>
+                        <th class="col-kind">Type</th>
+                        <th class="col-method">Method</th>
+                        <th class="col-preview">Preview</th>
+                        <th class="col-size">Size</th>
+                        <th class="col-status">Status</th>
+                    </tr>
+                </thead>
+                <tbody id="message-table-body" sse-swap="message" hx-swap="afterbegin">
+                    {{if not .Messages}}
+                    <tr class="empty-row">
+                        <td colspan="7">
+                            <div class="empty-state">
+                                <span>Waiting for MCP traffic...</span>
+                                <span class="hint">Messages will appear here in real-time</span>
+                            </div>
+                        </td>
+                    </tr>
+                    {{end}}
+                    {{range .Messages}}
+                    {{template "message_row.html" .}}
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Detail Panel -->
+    <div class="detail-overlay" id="detail-overlay">
+        <div class="detail-backdrop" onclick="closeDetail()"></div>
+        <div class="detail-panel" id="detail-panel">
+        </div>
+    </div>
+
+    <script>
+    function showDetail(id) {
+        fetch('/messages/' + id)
+            .then(r => r.text())
+            .then(html => {
+                document.getElementById('detail-panel').innerHTML = html;
+                document.getElementById('detail-overlay').classList.add('active');
+            });
+    }
+
+    function closeDetail() {
+        document.getElementById('detail-overlay').classList.remove('active');
+    }
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeDetail();
+    });
+
+    // Remove empty state when first message arrives via SSE
+    document.body.addEventListener('htmx:sseMessage', function() {
+        var empty = document.querySelector('.empty-row');
+        if (empty) empty.remove();
+    });
+    </script>
+</body>
+</html>

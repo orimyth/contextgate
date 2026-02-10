@@ -1,0 +1,30 @@
+{{define "approval_modal.html"}}
+<div class="approval-modal" id="approval-{{.ID}}">
+    <div class="approval-header">
+        <span class="approval-icon">APPROVAL REQUIRED</span>
+        <span class="approval-rule">Rule: {{.RuleName}}</span>
+    </div>
+    <dl class="approval-meta">
+        {{if .ToolName}}<dt>Tool</dt><dd class="method-name">{{.ToolName}}</dd>{{end}}
+        {{if .Method}}<dt>Method</dt><dd>{{.Method}}</dd>{{end}}
+        <dt>Session</dt><dd>{{.SessionID}}</dd>
+    </dl>
+    <div class="approval-payload">
+        <pre>{{prettyJSON .Payload}}</pre>
+    </div>
+    <div class="approval-actions">
+        <button class="btn-approve"
+                hx-post="/api/approve/{{.ID}}"
+                hx-target="#approval-{{.ID}}"
+                hx-swap="outerHTML">
+            APPROVE
+        </button>
+        <button class="btn-deny"
+                hx-post="/api/deny/{{.ID}}"
+                hx-target="#approval-{{.ID}}"
+                hx-swap="outerHTML">
+            DENY
+        </button>
+    </div>
+</div>
+{{end}}

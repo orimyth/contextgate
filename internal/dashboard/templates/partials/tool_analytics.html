@@ -1,0 +1,52 @@
+{{define "tool_analytics.html"}}
+<div class="tool-analytics-summary">
+    <div class="tool-stat-pill">
+        <span class="tool-stat-label">Available</span>
+        <span class="tool-stat-value available">{{.TotalAvailable}}</span>
+    </div>
+    <div class="tool-stat-pill">
+        <span class="tool-stat-label">Used</span>
+        <span class="tool-stat-value used">{{.TotalUsed}}</span>
+    </div>
+    <div class="tool-stat-pill">
+        <span class="tool-stat-label">Pruned</span>
+        <span class="tool-stat-value pruned">{{.TotalPruned}}</span>
+    </div>
+</div>
+{{if .Tools}}
+<table class="tool-table">
+    <thead>
+        <tr>
+            <th>Tool Name</th>
+            <th>Description</th>
+            <th class="col-num">Calls</th>
+            <th class="col-num">Sessions</th>
+            <th>Last Used</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        {{range .Tools}}
+        <tr>
+            <td class="tool-name">{{.ToolName}}</td>
+            <td class="tool-desc">{{truncate .Description 60}}</td>
+            <td class="col-num">{{.CallCount}}</td>
+            <td class="col-num">{{.SessionsSeen}}</td>
+            <td class="tool-last-used">{{if .LastUsed}}{{.LastUsed}}{{else}}<span class="text-muted">never</span>{{end}}</td>
+            <td>
+                {{if .IsPruned}}
+                <span class="tool-badge pruned">Pruned</span>
+                {{else if gt .CallCount 0}}
+                <span class="tool-badge active">Active</span>
+                {{else}}
+                <span class="tool-badge unused">Unused</span>
+                {{end}}
+            </td>
+        </tr>
+        {{end}}
+    </tbody>
+</table>
+{{else}}
+<div class="tool-empty">No tools discovered yet. Tools will appear after a tools/list exchange.</div>
+{{end}}
+{{end}}
